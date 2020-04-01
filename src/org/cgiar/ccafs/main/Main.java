@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -80,7 +81,7 @@ public class Main {
     reportSynthesisAltmetric
       .setDetailUrl(object.get("details_url") != null ? object.get("details_url").getAsString() : StringUtils.EMPTY);
     reportSynthesisAltmetric
-      .setDoi(object.get("doi") != null ? tryGetDoiIdentifier(object.get("doi").getAsString()) : StringUtils.EMPTY);
+      .setDoi(object.get("doi") != null ? tryGetDoiName(object.get("doi").getAsString()) : StringUtils.EMPTY);
     reportSynthesisAltmetric.setFacebookTotal(
       object.get("cited_by_fbwalls_count") != null ? object.get("cited_by_fbwalls_count").getAsInt() : 0);
     reportSynthesisAltmetric
@@ -93,9 +94,7 @@ public class Main {
       .setNewsTotal(object.get("cited_by_msm_count") != null ? object.get("cited_by_msm_count").getAsInt() : 0);
     reportSynthesisAltmetric.setPolicyTotal(
       object.get("cited_by_policies_count") != null ? object.get("cited_by_policies_count").getAsInt() : 0);
-    /*
-     * FIXME THIS IS A TEMPORAL SOLUTION
-     */
+    // FIXME THIS IS A TEMPORAL SOLUTION
     reportSynthesisAltmetric.setPublicationDate(object.get("published_on") != null
       ? dtf.format(LocalDate.ofEpochDay(TimeUnit.SECONDS.toDays(object.get("published_on").getAsLong()))) : null);
     reportSynthesisAltmetric
@@ -122,16 +121,17 @@ public class Main {
           }
         }
       }
+      sb.append(';').append(' ');
     } else {
       sb.append(split);
     }
-    sb.append(';').append(' ');
   }
 
   private static String getAuthorsAsString(JsonElement element) {
     JsonArray array = null;
     StringBuilder sb = new StringBuilder();
     String[] split = null;
+    String name = null;
 
     if (element.isJsonArray()) {
       array = element.getAsJsonArray();
@@ -147,7 +147,10 @@ public class Main {
       auxGetAuthorAsString(split, sb);
     }
 
-    return sb.toString();
+    name = sb.toString().trim();
+
+    return StringUtils.isNotBlank(name) && name.charAt(name.length() - 1) == ';' ? name.substring(0, name.length() - 1)
+      : name;
   }
 
   private static int getScore(JsonObject images) {
@@ -172,13 +175,34 @@ public class Main {
   }
 
   public static void main(String[] args) throws IOException, UnsupportedEncodingException {
-    JsonElement element = readIdFromAltmetric(45504266);
-    System.out.printf("element = %s\n", element);
-    ReportSynthesisAltmetric altmetric = altmetricResponseToReportSynthesisAltmetric(element);
-    System.out.printf("reportSynthesis = %s\n", altmetric);
+    List<ReportSynthesisAltmetric> databaseAltmetrics = DatabaseOperations.getReportSynthesisAltmetricList(true);
+    List<ReportSynthesisAltmetric> incomingAltmetricsById = databaseAltmetrics.stream()
+      .map(a -> StringUtils.stripToNull(a.getDoi())).filter(Objects::nonNull).map(Main::tryGetDoiName).map(arg0 -> {
+        try {
+          return readDoiFromAltmetric(arg0);
+        } catch (IOException e) {
+          e.printStackTrace();
+          return null;
+        }
+      }).map(Main::altmetricResponseToReportSynthesisAltmetric).collect(Collectors.toList());
+    incomingAltmetricsById.forEach(System.out::println);
   }
 
-  public static JsonElement readDoiFromAltmetric(final String doi) throws IOException, UnsupportedEncodingException {
+  /**
+   * <p>
+   * Reads an Altmetric article by its DOI name.
+   * </p>
+   * <p>
+   * A DOI name is the path part of a DOI URL. E.g. if your DOI URL is
+   * {@code https://www.doi.org/10.1007/978-3-319-29794-1_9}, you should enter {@code 10.1007/978-3-319-29794-1_9}.
+   * </p>
+   * 
+   * @param doi the DOI name
+   * @return a JSON with the response; null if the DOI was not found.
+   * @throws IOException if an exception occurs when reading from the API.
+   */
+
+  public static JsonElement readDoiFromAltmetric(final String doi) throws IOException {
     URL altmetricURL = new URL(ALTMETRICS_API_DOI_URL + doi);
     JsonElement element = null;
 
@@ -211,6 +235,20 @@ public class Main {
     return responses;
   }
 
+  /**
+   * <p>
+   * Reads an Altmetric article by its ID.
+   * </p>
+   * <p>
+   * Note that according to the <a href = "https://api.altmetric.com/docs/call_id.html"> API documentation</a>, this way
+   * to find an Altmetric article is not safe because "[...] these IDs are unstable over the medium term, you're much
+   * better off using a DOI [...] if you're able."
+   * </p>
+   * 
+   * @param altmetricId the Altmetric article ID
+   * @return a JSON with the response; null if the ID was not found.
+   * @throws IOException if an exception occurs when reading from the API.
+   */
   public static JsonElement readIdFromAltmetric(final long altmetricId) throws IOException {
     URL altmetricURL = new URL(ALTMETRICS_API_ID_URL + altmetricId);
     JsonElement element = null;
@@ -273,7 +311,7 @@ public class Main {
    * @return the DOI name found, {@link org.apache.commons.lang3.StringUtils.EMPTY empty} if could not be found or is
    *         invalid
    */
-  private static String tryGetDoiIdentifier(final String possibleDoi) {
+  private static String tryGetDoiName(final String possibleDoi) {
     if (StringUtils.isBlank(possibleDoi)) {
       return StringUtils.EMPTY;
     }
@@ -293,7 +331,7 @@ public class Main {
       doi = StringUtils.substringAfter(doi, "doi.org/");
     } else if (StringUtils.startsWithIgnoreCase(doi, "doi")) {
       doi = StringUtils.substringAfter(doi, "doi");
-      if (StringUtils.startsWith(possibleDoi, ":")) {
+      if (StringUtils.startsWith(doi, ":")) {
         doi = doi.substring(1);
       }
     } else if (StringUtils.isNotBlank(doi) && Character.isDigit(doi.charAt(0))) {
@@ -333,7 +371,7 @@ public class Main {
     ReportSynthesisAltmetric incoming = null;
     String doi = null;
     for (ReportSynthesisAltmetric reportSynthesisAltmetric : reportList) {
-      doi = tryGetDoiIdentifier(reportSynthesisAltmetric.getDoi());
+      doi = tryGetDoiName(reportSynthesisAltmetric.getDoi());
       try {
         element = readDoiFromAltmetric(doi);
         incoming = altmetricResponseToReportSynthesisAltmetric(element);

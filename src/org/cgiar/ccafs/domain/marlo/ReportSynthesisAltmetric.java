@@ -64,6 +64,7 @@ public class ReportSynthesisAltmetric implements Serializable {
   @Column(name = "policy_total")
   private int policyTotal;
 
+  // FIXME THIS IS A TEMPORAL SOLUTION. When this is a Temporal field, it throws an Exception...
   @Column(name = "publication_date")
   private String publicationDate;
 
