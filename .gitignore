@@ -1,0 +1,5 @@
+target
+.*
+!.gitignore
+bin
+src/META-INF/persistence.xml
