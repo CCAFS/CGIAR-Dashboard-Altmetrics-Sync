@@ -1,0 +1,13 @@
+server.port=9090
+
+#Configuración DataSource MySQL
+
+spring.datasource.url=the MARLO database URI
+spring.datasource.username= the database username
+spring.datasource.password= the username's password
+
+spring.jpa.properties.hibernate.dialect = org.hibernate.dialect.MySQLDialect
+spring.jpa.properties.hibernate.format_sql=true
+#change to true if you want to see the SQL instructions being executed
+spring.jpa.show-sql=false
+
