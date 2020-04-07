@@ -2,7 +2,6 @@ package org.cgiar.ccafs;
 
 import org.cgiar.ccafs.dao.ReportSynthesisAltmetricDAO;
 import org.cgiar.ccafs.domain.marlo.ReportSynthesisAltmetric;
-import org.cgiar.ccafs.manager.DeliverableMetadataElementManager;
 import org.cgiar.ccafs.manager.ReportSynthesisAltmetricManager;
 
 import java.util.List;
@@ -17,29 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @SpringBootTest
 class AltmetricReaderApplicationTests {
 
-
-  @Autowired
-  DeliverableMetadataElementManager deliverableMetadataElementManager;
-
   @Autowired
   ReportSynthesisAltmetricDAO reportSynthesisAltmetricDAO;
 
   @Autowired
   ReportSynthesisAltmetricManager reportSynthesisAltmetricManager;
-
-  @Test
-  @DisplayName("deliverableMetadataElementManagerInjection")
-  void testDmeManager() {
-    assertNotNull(deliverableMetadataElementManager, "why is this even null? x2");
-  }
-
-  @Test
-  @DisplayName("deliverableMetadataElementManagerFindAll")
-  void testDmeManagerFindAll() {
-    List<String> elements = deliverableMetadataElementManager.findAllDois();
-    assertNotNull(elements, "that is strange... x2");
-    elements.forEach(System.out::println);
-  }
 
   @Test
   @DisplayName("reportSynthesisAltmetricDAOInjection")
@@ -68,5 +49,7 @@ class AltmetricReaderApplicationTests {
     assertNotNull(elements, "that is strange... x2");
     elements.forEach(System.out::println);
   }
+
+  // TODO tests for every method
 
 }

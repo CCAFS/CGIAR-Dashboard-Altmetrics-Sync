@@ -21,8 +21,12 @@ import org.cgiar.ccafs.util.DOIHttpResponseCode;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -44,6 +48,11 @@ public class DOIService {
   public final static String DOI_SERVICE = "https://doi.org/api/handles/%s";
 
   public final static String DOI_SERVICE_RESPONSE_CODE = "responseCode";
+
+  /**
+   * Pattern defined according to the ShortDOI <a href = "http://shortdoi.org/">webpage</a>.
+   */
+  public final static Pattern SHORT_DOI_PATTERN = Pattern.compile("^\\d{2}\\/\\w{3,5}$", Pattern.MULTILINE);
 
   private static JsonElement getDoiElement(final String doi) throws IOException {
     URL shortDoiServiceURL = new URL(String.format(DOI_SERVICE, doi));
@@ -90,6 +99,80 @@ public class DOIService {
     }
 
     return doi;
+  }
+
+
+  /**
+   * Tries to get a DOI name from a given string.
+   * <p>
+   * A DOI name is defined as the path component of an URI, e.g. if your input string is
+   * {@code https://www.doi.org/10.1007/978-3-319-29794-1_9}, the result will be {@code 10.1007/978-3-319-29794-1_9}.
+   * </p>
+   * <p>
+   * This method currently recognizes and tries to get the DOI from strings like:
+   * <blockquote>
+   * <ul>
+   * <li>https://www.doi.org/10.1007/978-3-319-29794-1_9
+   * <li>http://dx.doi.org/10.1007/978-3-319-29794-1_9
+   * <li>http://shortdoi.org/10.1007/978-3-319-29794-1_9
+   * <li>https%3A%2F%2Fwww.doi.org%2F10.1007%2F978-3-319-29794-1_9
+   * <li>http%3A%2F%2Fdx.doi.org%2F10.1007%2F978-3-319-29794-1_9
+   * <li>http%3A%2F%2Fshortdoi.org%2F10%2Fdqnq
+   * <li>10/dqnq
+   * <li>/10/dqnq
+   * <li>10.1007/978-3-319-29794-1_9
+   * <li>/10.1007/978-3-319-29794-1_9
+   * <li>doi 10.1007/978-3-319-29794-1_9
+   * <li>doi:10.1007/978-3-319-29794-1_9
+   * </ul>
+   * </p>
+   * </blockquote>
+   * 
+   * @param possibleDoi a String containing the possible DOI name
+   * @return the DOI name found, {@link org.apache.commons.lang3.StringUtils.EMPTY empty} if could not be found or is
+   *         invalid
+   */
+  public static String tryGetDoiName(final String possibleDoi) {
+    if (StringUtils.isBlank(possibleDoi)) {
+      return StringUtils.EMPTY;
+    }
+
+    String doi = possibleDoi;
+    if (StringUtils.contains(doi, "%")) {
+      // possible encoded url...
+      try {
+        doi = URLDecoder.decode(doi, StandardCharsets.UTF_8.name());
+      } catch (UnsupportedEncodingException e) {
+        // ...maybe not, nothing we can do.
+        e.printStackTrace();
+      }
+    }
+
+    if (StringUtils.contains(doi, "doi.org/")) {
+      doi = StringUtils.substringAfter(doi, "doi.org/");
+    } else if (StringUtils.startsWithIgnoreCase(doi, "doi")) {
+      doi = StringUtils.substringAfter(doi, "doi");
+      if (StringUtils.startsWith(doi, ":")) {
+        doi = doi.substring(1);
+      }
+    } else if (StringUtils.isNotBlank(doi) && Character.isDigit(doi.charAt(0))) {
+      // continue
+    } else {
+      doi = StringUtils.EMPTY;
+    }
+
+    if (SHORT_DOI_PATTERN.matcher(doi).matches()) {
+      try {
+        // possible shortDOI...
+        doi = DOIService.getDoiFromShortDoi(doi);
+      } catch (IOException | InvalidDOIException e) {
+        // ... maybe not
+        doi = StringUtils.EMPTY;
+      }
+    }
+
+    // possible leading slash (/)
+    return StringUtils.isNotBlank(doi) && !Character.isDigit(doi.charAt(0)) ? doi.substring(1) : doi;
   }
 
 }

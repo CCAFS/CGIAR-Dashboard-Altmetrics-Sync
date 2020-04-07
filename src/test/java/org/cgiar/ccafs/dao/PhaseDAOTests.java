@@ -15,7 +15,7 @@
 
 package org.cgiar.ccafs.dao;
 
-import org.cgiar.ccafs.domain.marlo.DeliverableMetadataElement;
+import org.cgiar.ccafs.domain.marlo.Phase;
 
 import java.util.List;
 
@@ -35,23 +35,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  **************/
 
 @SpringBootTest
-class DeliverableMetadataElementDAOTests {
+class PhaseDAOTests {
 
-  public static final Logger LOG = LoggerFactory.getLogger(DeliverableMetadataElementDAOTests.class);
+  public static final Logger LOG = LoggerFactory.getLogger(PhaseDAOTests.class);
 
   @Autowired
-  DeliverableMetadataElementDAO deliverableMetadataElementDAO;
+  PhaseDAO phaseDAO;
 
   @Test
-  @DisplayName("deliverableMetadataElementDAOInjection")
+  @DisplayName("phaseDAOInjection")
   void testDmeDao() {
-    assertNotNull(deliverableMetadataElementDAO, "deliverableMetadataElementDAO is null");
+    assertNotNull(phaseDAO, "phaseDAO is null");
   }
 
   @Test
-  @DisplayName("deliverableMetadataElementDAOFindAll")
+  @DisplayName("phaseDAOFindAllSample")
   void testDmeDaoFindAll() {
-    List<DeliverableMetadataElement> elements = deliverableMetadataElementDAO.findAll();
+    List<Phase> elements = phaseDAO.findAll();
     assertNotNull(elements, "findAll returned null...");
     assertNotEquals(elements.size(), 0);
     LOG.info(String.valueOf(elements.get(0)));

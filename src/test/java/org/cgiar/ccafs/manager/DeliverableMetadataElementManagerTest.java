@@ -13,9 +13,7 @@
  * along with MARLO. If not, see <http://www.gnu.org/licenses/>.
  *****************************************************************/
 
-package org.cgiar.ccafs.dao;
-
-import org.cgiar.ccafs.domain.marlo.DeliverableMetadataElement;
+package org.cgiar.ccafs.manager;
 
 import java.util.List;
 
@@ -35,28 +33,26 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  **************/
 
 @SpringBootTest
-class DeliverableMetadataElementDAOTests {
+class DeliverableMetadataElementManagerTest {
 
-  public static final Logger LOG = LoggerFactory.getLogger(DeliverableMetadataElementDAOTests.class);
+  public static final Logger LOG = LoggerFactory.getLogger(DeliverableMetadataElementManagerTest.class);
 
   @Autowired
-  DeliverableMetadataElementDAO deliverableMetadataElementDAO;
+  DeliverableMetadataElementManager deliverableMetadataElementManager;
 
   @Test
-  @DisplayName("deliverableMetadataElementDAOInjection")
-  void testDmeDao() {
-    assertNotNull(deliverableMetadataElementDAO, "deliverableMetadataElementDAO is null");
+  @DisplayName("deliverableMetadataElementManagerInjection")
+  void testDmeManager() {
+    assertNotNull(deliverableMetadataElementManager, "deliverableMetadataElementManager is null");
   }
 
   @Test
-  @DisplayName("deliverableMetadataElementDAOFindAll")
-  void testDmeDaoFindAll() {
-    List<DeliverableMetadataElement> elements = deliverableMetadataElementDAO.findAll();
-    assertNotNull(elements, "findAll returned null...");
+  @DisplayName("deliverableMetadataElementManagerFindAllDois")
+  void testDmeManagerFindAll() {
+    List<String> elements = deliverableMetadataElementManager.findAllDois();
+    assertNotNull(elements, "findAllDois returned null...");
     assertNotEquals(elements.size(), 0);
     LOG.info(String.valueOf(elements.get(0)));
   }
-
-  // TODO tests for every method
 
 }

@@ -13,9 +13,9 @@
  * along with MARLO. If not, see <http://www.gnu.org/licenses/>.
  *****************************************************************/
 
-package org.cgiar.ccafs.dao;
+package org.cgiar.ccafs.manager;
 
-import org.cgiar.ccafs.domain.marlo.DeliverableMetadataElement;
+import org.cgiar.ccafs.domain.marlo.Phase;
 
 import java.util.List;
 
@@ -33,30 +33,28 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**************
  * @author German C. Martinez - CIAT/CCAFS
  **************/
-
 @SpringBootTest
-class DeliverableMetadataElementDAOTests {
+class PhaseManagerTests {
 
-  public static final Logger LOG = LoggerFactory.getLogger(DeliverableMetadataElementDAOTests.class);
+  public static final Logger LOG = LoggerFactory.getLogger(PhaseManagerTests.class);
 
   @Autowired
-  DeliverableMetadataElementDAO deliverableMetadataElementDAO;
+  PhaseManager phaseManager;
 
   @Test
-  @DisplayName("deliverableMetadataElementDAOInjection")
-  void testDmeDao() {
-    assertNotNull(deliverableMetadataElementDAO, "deliverableMetadataElementDAO is null");
+  @DisplayName("phaseManagerInjection")
+  void testDmeManager() {
+    assertNotNull(phaseManager, "phaseManager is null");
   }
 
   @Test
-  @DisplayName("deliverableMetadataElementDAOFindAll")
-  void testDmeDaoFindAll() {
-    List<DeliverableMetadataElement> elements = deliverableMetadataElementDAO.findAll();
+  @DisplayName("phaseManagerFindAll")
+  void testDmeManagerFindAll() {
+    List<Phase> elements = phaseManager.findAll();
     assertNotNull(elements, "findAll returned null...");
     assertNotEquals(elements.size(), 0);
     LOG.info(String.valueOf(elements.get(0)));
   }
 
-  // TODO tests for every method
 
 }
