@@ -17,10 +17,14 @@ package org.cgiar.ccafs.manager;
 
 import org.cgiar.ccafs.domain.marlo.ReportSynthesisAltmetric;
 
+import java.util.List;
+
 /**************
  * @author German C. Martinez - CIAT/CCAFS
  **************/
 
 public interface ReportSynthesisAltmetricManager extends GenericManager<ReportSynthesisAltmetric, String> {
+
+  public List<ReportSynthesisAltmetric> findByCRPAcronym(String crpAcronym);
 
 }

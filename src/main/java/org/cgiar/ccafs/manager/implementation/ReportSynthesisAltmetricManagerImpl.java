@@ -19,6 +19,7 @@ import org.cgiar.ccafs.dao.ReportSynthesisAltmetricDAO;
 import org.cgiar.ccafs.domain.marlo.ReportSynthesisAltmetric;
 import org.cgiar.ccafs.manager.ReportSynthesisAltmetricManager;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -90,6 +91,16 @@ public class ReportSynthesisAltmetricManagerImpl implements ReportSynthesisAltme
   @Transactional(readOnly = true)
   public List<ReportSynthesisAltmetric> findAll() {
     return reportSynthesisAltmetricDAO.findAll();
+  }
+
+  @Override
+  public List<ReportSynthesisAltmetric> findByCRPAcronym(String crpAcronym) {
+    crpAcronym = StringUtils.stripToEmpty(crpAcronym);
+    if (crpAcronym.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    return reportSynthesisAltmetricDAO.findByCRPAcronym(crpAcronym);
   }
 
   @Override

@@ -306,13 +306,15 @@ public class AltmetricReaderApplication implements CommandLineRunner {
       LOG.info("Done!");
       if (!failed.isEmpty()) {
         List<String> ids = failed.stream().map(a -> a.getId()).collect(Collectors.toList());
-        LOG.info("There were {} report(s) which information could not be updated: {}", failed.size(), ids);
+        LOG.info("There were {} report(s) which information could not be fetched: {}", failed.size(), ids);
       }
     }
 
+    LOG.info("4. Updating {} database entries...", incomingAltmetricsById.size());
     for (ReportSynthesisAltmetric rsa : incomingAltmetricsById) {
       reportSynthesisAltmetricManager.update(rsa);
     }
+    LOG.info("Done!");
 
     incomingAltmetricsDTOById = incomingAltmetricsById.stream()
       .map(reportSynthesisAltmetricMapper::reportSynthesisAltmetricToReportSynthesisAltmetricDTO)
@@ -326,7 +328,7 @@ public class AltmetricReaderApplication implements CommandLineRunner {
       .append("--------------------------------------------------------------------------\n")
       .append("failed by both Altmetric Id and DOI = \n").append(gson.toJson(failed));
 
-    Files.write(Paths.get("D:\\misc\\txts\\dumpAltmetricDoiReportDev.txt"),
+    Files.write(Paths.get("D:\\misc\\txts\\altmetric-prod-update\\dumpAltmetricDoiReportProd.txt"),
       sb.toString().getBytes(StandardCharsets.UTF_8));
   }
 }
