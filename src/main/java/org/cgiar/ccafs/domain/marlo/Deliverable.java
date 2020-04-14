@@ -27,8 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class Deliverable extends MarloBaseEntity<String> implements Serializable {
 
-  private static final long serialVersionUID = 1L;
-
   @Column(name = "active_since")
   private Timestamp activeSince;
 

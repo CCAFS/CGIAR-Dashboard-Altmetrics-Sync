@@ -1,13 +1,16 @@
 package org.cgiar.ccafs.domain.marlo;
 
 import java.io.Serializable;
+import java.util.List;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQuery;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +65,12 @@ public class ReportSynthesisAltmetric extends MarloBaseEntity<String> implements
   @Column(name = "publication_date")
   private String publicationDate;
 
+  private String imageUrl;
+
+  // @Temporal(TemporalType.DATE)
+  @Column(name = "last_updated")
+  String lastUpdated;
+
   @Lob
   private String title;
 
@@ -71,7 +80,21 @@ public class ReportSynthesisAltmetric extends MarloBaseEntity<String> implements
   @Column(name = "wikipedia_total")
   private Integer wikipediaTotal;
 
+  @OneToMany(mappedBy = "reportSynthesisAltmetric", fetch = FetchType.LAZY)
+  private List<AltmetricsErrorLog> altmetricsErrorLogs;
+
   public ReportSynthesisAltmetric() {
+  }
+
+  public AltmetricsErrorLog addAltmetricsErrorLog(AltmetricsErrorLog altmetricsErrorLog) {
+    this.getAltmetricsErrorLogs().add(altmetricsErrorLog);
+    altmetricsErrorLog.setReportSynthesisAltmetric(this);
+
+    return altmetricsErrorLog;
+  }
+
+  public List<AltmetricsErrorLog> getAltmetricsErrorLogs() {
+    return altmetricsErrorLogs;
   }
 
   public Integer getAttentionScore() {
@@ -98,8 +121,16 @@ public class ReportSynthesisAltmetric extends MarloBaseEntity<String> implements
     return this.facebookTotal;
   }
 
+  public String getImageUrl() {
+    return imageUrl;
+  }
+
   public String getJournalTitle() {
     return this.journalTitle;
+  }
+
+  public String getLastUpdated() {
+    return lastUpdated;
   }
 
   public Integer getMendeleyTotal() {
@@ -134,6 +165,17 @@ public class ReportSynthesisAltmetric extends MarloBaseEntity<String> implements
     return this.wikipediaTotal;
   }
 
+  public AltmetricsErrorLog removeAltmetricsErrorLog(AltmetricsErrorLog altmetricsErrorLog) {
+    this.getAltmetricsErrorLogs().remove(altmetricsErrorLog);
+    altmetricsErrorLog.setReportSynthesisAltmetric(null);
+
+    return altmetricsErrorLog;
+  }
+
+  public void setAltmetricsErrorLogs(List<AltmetricsErrorLog> altmetricsErrorLogs) {
+    this.altmetricsErrorLogs = altmetricsErrorLogs;
+  }
+
   public void setAttentionScore(Integer attentionScore) {
     this.attentionScore = attentionScore;
   }
@@ -158,8 +200,16 @@ public class ReportSynthesisAltmetric extends MarloBaseEntity<String> implements
     this.facebookTotal = facebookTotal;
   }
 
+  public void setImageUrl(String imageUrl) {
+    this.imageUrl = imageUrl;
+  }
+
   public void setJournalTitle(String journalTitle) {
     this.journalTitle = journalTitle;
+  }
+
+  public void setLastUpdated(String lastUpdated) {
+    this.lastUpdated = lastUpdated;
   }
 
   public void setMendeleyTotal(Integer mendeleyTotal) {

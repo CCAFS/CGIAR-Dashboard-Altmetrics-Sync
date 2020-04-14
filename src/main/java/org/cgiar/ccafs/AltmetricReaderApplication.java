@@ -1,8 +1,10 @@
 package org.cgiar.ccafs;
 
+import org.cgiar.ccafs.domain.marlo.AltmetricsErrorLog;
 import org.cgiar.ccafs.domain.marlo.Phase;
 import org.cgiar.ccafs.domain.marlo.ReportSynthesisAltmetric;
 import org.cgiar.ccafs.dto.ReportSynthesisAltmetricDTO;
+import org.cgiar.ccafs.manager.AltmetricsErrorLogManager;
 import org.cgiar.ccafs.manager.PhaseManager;
 import org.cgiar.ccafs.manager.ReportSynthesisAltmetricManager;
 import org.cgiar.ccafs.mapper.ReportSynthesisAltmetricMapper;
@@ -11,10 +13,8 @@ import org.cgiar.ccafs.service.DOIService;
 import org.cgiar.ccafs.util.NumberParseUtils;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -27,7 +27,6 @@ import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
@@ -44,7 +43,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class AltmetricReaderApplication implements CommandLineRunner {
 
-  private static Logger LOG = LoggerFactory.getLogger(AltmetricReaderApplication.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AltmetricReaderApplication.class);
+  private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
   private static ReportSynthesisAltmetric altmetricResponseToReportSynthesisAltmetric(JsonElement altmetricResponse) {
     if (altmetricResponse.isJsonNull()) {
@@ -56,7 +57,6 @@ public class AltmetricReaderApplication implements CommandLineRunner {
     JsonElement element = JsonNull.INSTANCE;
     JsonObject object = altmetricResponse.getAsJsonObject();
     JsonObject aux = null;
-    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     // apparently the score is located as a parameter of an image URL, strange.
     aux = object.getAsJsonObject("images");
@@ -79,8 +79,10 @@ public class AltmetricReaderApplication implements CommandLineRunner {
       object.get("doi") != null ? DOIService.tryGetDoiName(object.get("doi").getAsString()) : StringUtils.EMPTY);
     reportSynthesisAltmetric.setFacebookTotal(
       object.get("cited_by_fbwalls_count") != null ? object.get("cited_by_fbwalls_count").getAsInt() : 0);
+    reportSynthesisAltmetric.setImageUrl(aux != null ? getImageUrl(aux) : StringUtils.EMPTY);
     reportSynthesisAltmetric
       .setJournalTitle(object.get("journal") != null ? object.get("journal").getAsString() : StringUtils.EMPTY);
+    reportSynthesisAltmetric.setLastUpdated(LocalDateTime.now().format(DATE_TIME_FORMATTER));
 
     aux = object.getAsJsonObject("readers");
     reportSynthesisAltmetric.setMendeleyTotal(aux.get("mendeley") != null ? aux.get("mendeley").getAsInt() : 0);
@@ -91,7 +93,8 @@ public class AltmetricReaderApplication implements CommandLineRunner {
       object.get("cited_by_policies_count") != null ? object.get("cited_by_policies_count").getAsInt() : 0);
     // FIXME THIS IS A TEMPORAL SOLUTION
     reportSynthesisAltmetric.setPublicationDate(object.get("published_on") != null
-      ? dtf.format(LocalDate.ofEpochDay(TimeUnit.SECONDS.toDays(object.get("published_on").getAsLong()))) : null);
+      ? DATE_FORMATTER.format(LocalDate.ofEpochDay(TimeUnit.SECONDS.toDays(object.get("published_on").getAsLong())))
+      : null);
     reportSynthesisAltmetric
       .setTitle(object.get("title") != null ? object.get("title").getAsString() : StringUtils.EMPTY);
     reportSynthesisAltmetric.setTwitterTotal(
@@ -170,6 +173,24 @@ public class AltmetricReaderApplication implements CommandLineRunner {
       : name;
   }
 
+  private static String getImageUrl(JsonObject images) {
+    String imageUrl = null;
+    JsonElement element = images.get("small");
+
+    if (element == null) {
+      element = images.get("medium");
+      if (element == null) {
+        element = images.get("large");
+      }
+    }
+
+    if (element != null && element.isJsonPrimitive()) {
+      imageUrl = element.getAsString();
+    }
+
+    return imageUrl;
+  }
+
   private static int getScore(JsonObject images) {
     int score = -1;
     String string = null;
@@ -201,6 +222,9 @@ public class AltmetricReaderApplication implements CommandLineRunner {
   @Autowired
   PhaseManager phaseManager;
 
+  @Autowired
+  AltmetricsErrorLogManager altmetricsErrorLogManager;
+
   @Override
   public void run(String... args) throws Exception {
     LOG.info("EXECUTING : command line runner");
@@ -208,16 +232,13 @@ public class AltmetricReaderApplication implements CommandLineRunner {
     this.updateReportSyntesisAltmetrics();
   }
 
-  /*
-   * WIP
-   */
   public void updateReportSyntesisAltmetrics() throws Exception {
     ReportSynthesisAltmetricMapper reportSynthesisAltmetricMapper =
       Mappers.getMapper(ReportSynthesisAltmetricMapper.class);
 
     LOG.info("1. Getting all altmetrics data from database...");
-    List<ReportSynthesisAltmetricDTO> databaseAltmetrics = reportSynthesisAltmetricManager.findAll().stream()
-      .map(reportSynthesisAltmetricMapper::reportSynthesisAltmetricToReportSynthesisAltmetricDTO)
+    List<ReportSynthesisAltmetricDTO> databaseAltmetrics = reportSynthesisAltmetricManager.findByCRPAcronym("fish")
+      .stream().map(reportSynthesisAltmetricMapper::reportSynthesisAltmetricToReportSynthesisAltmetricDTO)
       .collect(Collectors.toList());
     LOG.info("Done! Found {} report(s).", databaseAltmetrics.size());
 
@@ -225,19 +246,21 @@ public class AltmetricReaderApplication implements CommandLineRunner {
     Optional<Phase> phase = Optional.empty();
 
     Set<ReportSynthesisAltmetricDTO> failedByDoiName = new HashSet<>();
-    Set<ReportSynthesisAltmetricDTO> failed = new HashSet<>();
+    AltmetricsErrorLog altmetricsErrorLog = null;
+    Set<AltmetricsErrorLog> failed = new HashSet<>();
     SortedSet<ReportSynthesisAltmetric> incomingAltmetricsById = new TreeSet<>(reportComparator);
-    Set<ReportSynthesisAltmetricDTO> incomingAltmetricsDTOById = new HashSet<>();
 
     ReportSynthesisAltmetric altmetricResponseMapped = null;
+    ReportSynthesisAltmetric aux = null;
     // ReportSynthesisAltmetricDTO reportSynthesisAltmetricDTO = null;
 
     String string = null;
     JsonElement altmetricResponse = null;
     long altmetricId = -1;
 
-    Gson gson = new Gson();
-    StringBuilder sb = new StringBuilder(4096);
+    // Gson gson = new Gson();
+    // StringBuilder sb = new StringBuilder(4096);
+    // Set<ReportSynthesisAltmetricDTO> incomingAltmetricsDTOById = new HashSet<>();
 
     LOG.info("2. Finding with the Altmetric API the info by DOI name ...");
     for (ReportSynthesisAltmetricDTO rsa : databaseAltmetrics) {
@@ -271,8 +294,8 @@ public class AltmetricReaderApplication implements CommandLineRunner {
 
     if (!failedByDoiName.isEmpty()) {
       String logString = failedByDoiName.size() != 1
-        ? "3. There were {} reports that could not be found by their DOI Name, retrying by their Altmetric id..."
-        : "3. There was {} report that could not be found by its DOI Name, retrying by its Altmetric id...";
+        ? "2.1. There were {} reports that could not be found by their DOI Name, retrying by their Altmetric id..."
+        : "2.1. There was {} report that could not be found by its DOI Name, retrying by its Altmetric id...";
       LOG.info(logString, failedByDoiName.size());
 
       for (ReportSynthesisAltmetricDTO rsa : failedByDoiName) {
@@ -289,7 +312,15 @@ public class AltmetricReaderApplication implements CommandLineRunner {
 
           altmetricResponseMapped = altmetricResponseToReportSynthesisAltmetric(altmetricResponse);
           if (altmetricResponseMapped == null) {
-            failed.add(rsa);
+            altmetricsErrorLog = new AltmetricsErrorLog();
+            altmetricsErrorLog.setErrorDescription("Could not be found by DOI Name or Altmetric ID");
+
+            // orElse should NEVER happen, data was taken directly from the database
+            aux = reportSynthesisAltmetricManager.findById(rsa.getId()).orElse(null);
+            altmetricsErrorLog.setReportSynthesisAltmetric(aux);
+
+            altmetricsErrorLog.setUpdatedDate(LocalDateTime.now().format(DATE_TIME_FORMATTER));
+            failed.add(altmetricsErrorLog);
           } else {
 
             altmetricResponseMapped.setId(rsa.getId());
@@ -305,30 +336,38 @@ public class AltmetricReaderApplication implements CommandLineRunner {
 
       LOG.info("Done!");
       if (!failed.isEmpty()) {
-        List<String> ids = failed.stream().map(a -> a.getId()).collect(Collectors.toList());
+        List<String> ids =
+          failed.stream().map(a -> a.getReportSynthesisAltmetric().getId()).collect(Collectors.toList());
         LOG.info("There were {} report(s) which information could not be fetched: {}", failed.size(), ids);
       }
     }
 
-    LOG.info("4. Updating {} database entries...", incomingAltmetricsById.size());
+    LOG.info("3. Updating {} database entries...", incomingAltmetricsById.size());
     for (ReportSynthesisAltmetric rsa : incomingAltmetricsById) {
       reportSynthesisAltmetricManager.update(rsa);
     }
+
+    if (!failed.isEmpty()) {
+      for (AltmetricsErrorLog errorLog : failed) {
+        altmetricsErrorLogManager.save(errorLog);
+      }
+    }
     LOG.info("Done!");
 
-    incomingAltmetricsDTOById = incomingAltmetricsById.stream()
-      .map(reportSynthesisAltmetricMapper::reportSynthesisAltmetricToReportSynthesisAltmetricDTO)
-      .collect(Collectors.toSet());
-
-    sb = sb.append("database information = \n").append(gson.toJson(databaseAltmetrics)).append('\n')
-      .append("--------------------------------------------------------------------------\n").append("succeded = \n")
-      .append(gson.toJson(incomingAltmetricsDTOById)).append('\n')
-      .append("--------------------------------------------------------------------------\n")
-      .append("failed by DOI = \n").append(gson.toJson(failedByDoiName)).append('\n')
-      .append("--------------------------------------------------------------------------\n")
-      .append("failed by both Altmetric Id and DOI = \n").append(gson.toJson(failed));
-
-    Files.write(Paths.get("D:\\misc\\txts\\altmetric-prod-update\\dumpAltmetricDoiReportProd.txt"),
-      sb.toString().getBytes(StandardCharsets.UTF_8));
+    // for debugging purposes
+    // incomingAltmetricsDTOById = incomingAltmetricsById.stream()
+    // .map(reportSynthesisAltmetricMapper::reportSynthesisAltmetricToReportSynthesisAltmetricDTO)
+    // .collect(Collectors.toSet());
+    //
+    // sb = sb.append("database information = \n").append(gson.toJson(databaseAltmetrics)).append('\n')
+    // .append("--------------------------------------------------------------------------\n").append("succeded = \n")
+    // .append(gson.toJson(incomingAltmetricsDTOById)).append('\n')
+    // .append("--------------------------------------------------------------------------\n")
+    // .append("failed by DOI = \n").append(gson.toJson(failedByDoiName)).append('\n')
+    // .append("--------------------------------------------------------------------------\n")
+    // .append("failed by both Altmetric Id and DOI = \n").append(gson.toJson(failed));
+    //
+    // Files.write(Paths.get("D:\\misc\\txts\\altmetric-prod-update\\dumpAltmetricDoiReportProd.txt"),
+    // sb.toString().getBytes(StandardCharsets.UTF_8));
   }
 }

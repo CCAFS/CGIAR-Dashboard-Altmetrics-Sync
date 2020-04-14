@@ -13,6 +13,7 @@
 	<artifactId>altmetric-reader</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>altmetric-reader</name>
+	<packaging>jar</packaging>
 	<description>Library to synchronize the Altmetric scores</description>
 
 	<properties>

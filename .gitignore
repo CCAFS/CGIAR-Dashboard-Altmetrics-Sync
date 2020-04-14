@@ -34,3 +34,4 @@ build/
 !.gitignore
 bin
 src/main/resources/application.properties
+console.log

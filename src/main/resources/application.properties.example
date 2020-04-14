@@ -1,6 +1,6 @@
 server.port=9090
 
-#Configuración DataSource MySQL
+#Configuracion DataSource MySQL
 
 spring.datasource.url=the MARLO database URI
 spring.datasource.username= the database username
@@ -8,6 +8,13 @@ spring.datasource.password= the username's password
 
 spring.jpa.properties.hibernate.dialect = org.hibernate.dialect.MySQLDialect
 spring.jpa.properties.hibernate.format_sql=true
+
 #change to true if you want to see the SQL instructions being executed
 spring.jpa.show-sql=false
 
+#logging file name
+#if you do not want to create a dump file of the console, remove the next
+#uncommented line and remove logback-spring.xml from this path.
+logging.file.name=the filename of the file where the console will be dumped
+
+spring.jpa.hibernate.use-new-id-generator-mappings= false
